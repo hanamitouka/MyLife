@@ -1,0 +1,50 @@
+name: Build Windows .exe
+
+# 触发方式：
+#  1. 手动：GitHub 仓库 → Actions → 选本 workflow → Run workflow
+#  2. 自动：推送到 main 分支时
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 设置 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust 缓存（加速重复构建）
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 写入 Supabase 配置（从 GitHub Secrets 读取）
+        shell: bash
+        run: |
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+
+      - name: 安装前端依赖
+        run: npm install
+
+      - name: 构建 Tauri（Windows）
+        run: npx tauri build
+
+      - name: 上传产物（.exe + 安装包）
+        uses: actions/upload-artifact@v4
+        with:
+          name: mylife-windows
+          path: |
+            src-tauri/target/release/mylife.exe
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
