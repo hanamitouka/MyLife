@@ -38,17 +38,3 @@ export function goalToCard(goalId: string, title: string) {
     goalId,
   });
 }
-
-/** 时间轴安排 完成/恢复 → 同步回写关联待办 */
-export function toggleEventDone(eventId: string) {
-  const life = useLifeStore.getState();
-  const event = life.events.find((e) => e.id === eventId);
-  if (!event) return;
-  const newDone = !event.done;
-  life.setEventDone(eventId, newDone);
-
-  const activity = life.activities.find((a) => a.id === event.activityId);
-  if (activity?.todoId) {
-    useTodoStore.getState().setDone(activity.todoId, newDone);
-  }
-}

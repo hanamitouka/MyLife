@@ -46,7 +46,6 @@ interface LifeStore {
 
   addEvent: (input: { activityId: string; start: string; end: string }) => void;
   updateEvent: (id: string, patch: { start: string; end: string }) => void;
-  setEventDone: (id: string, done: boolean) => void;
   deleteEvent: (id: string) => void;
   replaceAll: (data: { activities: Activity[]; events: ScheduleEvent[] }) => void;
 }
@@ -140,12 +139,6 @@ export const useLifeStore = create<LifeStore>((set, get) => ({
     set((s) => ({
       events: s.events.map((e) => (e.id === id ? { ...e, ...patch } : e)),
     }));
-    const updated = get().events.find((e) => e.id === id);
-    if (updated) void storage.saveEvent(updated);
-  },
-
-  setEventDone(id, done) {
-    set((s) => ({ events: s.events.map((e) => (e.id === id ? { ...e, done } : e)) }));
     const updated = get().events.find((e) => e.id === id);
     if (updated) void storage.saveEvent(updated);
   },

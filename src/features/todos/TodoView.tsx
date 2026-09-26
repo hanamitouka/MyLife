@@ -91,7 +91,8 @@ export function TodoView() {
   const [title, setTitle] = useState('');
   const [priority, setPriorityState] = useState(0);
   const [hasDue, setHasDue] = useState(false);
-  const [dueAt, setDueAt] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [dueTime, setDueTime] = useState('');
   const [remindBefore, setRemindBefore] = useState(0);
 
   function handleAdd(e: React.FormEvent) {
@@ -100,12 +101,13 @@ export function TodoView() {
     addTodo({
       title: title.trim(),
       priority,
-      dueAt: hasDue && dueAt ? new Date(dueAt).toISOString() : undefined,
+      dueAt: hasDue && dueDate ? new Date(`${dueDate}T${dueTime || '00:00'}`).toISOString() : undefined,
       remindBeforeMinutes: hasDue && remindBefore > 0 ? remindBefore : undefined,
     });
     setTitle('');
     setHasDue(false);
-    setDueAt('');
+    setDueDate('');
+    setDueTime('');
     setRemindBefore(0);
   }
 
@@ -137,9 +139,14 @@ export function TodoView() {
         {hasDue && (
           <div className="form-row">
             <input
-              type="datetime-local"
-              value={dueAt}
-              onChange={(e) => setDueAt(e.target.value)}
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+            <input
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
             />
             <select
               value={remindBefore}

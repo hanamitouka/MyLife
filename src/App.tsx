@@ -11,6 +11,9 @@ import { supabase, isSupabaseConfigured, signOut } from './lib/supabase';
 import { useLifeStore } from './features/activities/activityStore';
 import { useTodoStore } from './features/todos/todoStore';
 import { useGoalStore } from './features/goals/goalStore';
+import { isMobilePlatform } from './mobile/isMobile';
+import { MobileShell } from './mobile/MobileShell';
+import { ConfirmDialog } from './components/ConfirmDialog';
 
 type View = 'dashboard' | 'todos' | 'habits' | 'goals' | 'achievements';
 type Theme = 'light' | 'dark';
@@ -23,18 +26,65 @@ const TABS: { key: View; label: string }[] = [
   { key: 'achievements', label: '成就' },
 ];
 
+/** 桌面端外壳：顶部导航 + 各视图（移动端走 MobileShell）。 */
+function DesktopShell({ theme, onToggleTheme }: { theme: Theme; onToggleTheme: () => void }) {
+  const [view, setView] = useState<View>('dashboard');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  return (
+    <div className="app-shell">
+      <nav className="topnav">
+        <span className="topnav__brand">MyLife</span>
+        <div className="topnav__right">
+          <div className="topnav__tabs">
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                className={`tab ${view === t.key ? 'is-active' : ''}`}
+                onClick={() => setView(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <button
+            className="theme-toggle"
+            onClick={onToggleTheme}
+            title={theme === 'dark' ? '切换到浅色' : '切换到深色'}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+          <button className="theme-toggle" onClick={() => setSettingsOpen(true)} title="设置">
+            ⚙️
+          </button>
+          {isSupabaseConfigured && (
+            <button className="btn-ghost btn-sm" onClick={() => void signOut()} title="退出登录">
+              退出
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {view === 'dashboard' && <Dashboard onNavigate={setView} />}
+      {view === 'todos' && <TodoView />}
+      {view === 'habits' && <HabitView />}
+      {view === 'goals' && <GoalView />}
+      {view === 'achievements' && <AchievementsView />}
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+    </div>
+  );
+}
+
 export default function App() {
   const load = useLifeStore((s) => s.load);
   const loadTodos = useTodoStore((s) => s.load);
   const loadGoals = useGoalStore((s) => s.load);
 
-  const [view, setView] = useState<View>('dashboard');
   const [theme, setTheme] = useState<Theme>(() =>
     localStorage.getItem('mylife.theme') === 'light' ? 'light' : 'dark'
   );
   const [session, setSession] = useState<Session | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // 应用并持久化主题（useLayoutEffect 避免首屏闪烁）
   useLayoutEffect(() => {
@@ -82,46 +132,16 @@ export default function App() {
   if (!authChecked) return <div className="loading">加载中…</div>;
   if (isSupabaseConfigured && !session) return <AuthScreen />;
 
-  return (
-    <div className="app-shell">
-      <nav className="topnav">
-        <span className="topnav__brand">MyLife</span>
-        <div className="topnav__right">
-          <div className="topnav__tabs">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                className={`tab ${view === t.key ? 'is-active' : ''}`}
-                onClick={() => setView(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <button
-            className="theme-toggle"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            title={theme === 'dark' ? '切换到浅色' : '切换到深色'}
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
-          <button className="theme-toggle" onClick={() => setSettingsOpen(true)} title="设置">
-            ⚙️
-          </button>
-          {isSupabaseConfigured && (
-            <button className="btn-ghost btn-sm" onClick={() => void signOut()} title="退出登录">
-              退出
-            </button>
-          )}
-        </div>
-      </nav>
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
-      {view === 'dashboard' && <Dashboard onNavigate={setView} />}
-      {view === 'todos' && <TodoView />}
-      {view === 'habits' && <HabitView />}
-      {view === 'goals' && <GoalView />}
-      {view === 'achievements' && <AchievementsView />}
-      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
-    </div>
+  return (
+    <>
+      {isMobilePlatform() ? (
+        <MobileShell theme={theme} onToggleTheme={toggleTheme} />
+      ) : (
+        <DesktopShell theme={theme} onToggleTheme={toggleTheme} />
+      )}
+      <ConfirmDialog />
+    </>
   );
 }

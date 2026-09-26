@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Draggable } from '@fullcalendar/interaction';
+import interact from 'interactjs';
 import { useLifeStore } from './activityStore';
 import { useScheduleStore } from '../../lib/scheduleStore';
 import { ActivityCard } from './ActivityCard';
@@ -8,7 +8,7 @@ import type { Activity } from '../../types';
 
 /**
  * 左侧栏：只展示「活动库」卡片（拖拽源 / 点选源）。
- * 增删改在「管理活动」（新增）或双击卡片（编辑）里。
+ * 卡片用 interact.js 做拖拽（鼠标 + 触屏都支持），点选排期仍然可用。
  */
 export function ActivityList() {
   const listRef = useRef<HTMLDivElement>(null);
@@ -17,25 +17,38 @@ export function ActivityList() {
   const [managerOpen, setManagerOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | undefined>(undefined);
 
-  // 让列表里的卡片可以被拖拽（桌面端）。手机端走「点选 → 点时间轴」。
+  // 卡片拖拽（interact.js）
   useEffect(() => {
-    if (!listRef.current) return;
-    const draggable = new Draggable(listRef.current, {
-      itemSelector: '.activity-card',
-      eventData(el) {
-        const id = (el as HTMLElement).dataset.activityId;
-        const activity = useLifeStore.getState().activities.find((a) => a.id === id);
-        if (!activity) return {};
-        return {
-          title: activity.title,
-          duration: { minutes: activity.durationMinutes },
-          backgroundColor: activity.color,
-          borderColor: activity.color,
-        };
+    interact('.activity-card').draggable({
+      autoScroll: true,
+      listeners: {
+        start(event: any) {
+          const target = event.target as HTMLElement;
+          target.style.pointerEvents = 'none'; // 让 elementFromPoint 能穿透到时间轴
+          target.style.opacity = '0.7';
+          target.style.zIndex = '1000';
+        },
+        move(event: any) {
+          const target = event.target as HTMLElement;
+          const x = (parseFloat(target.getAttribute('data-x') || '0')) + event.dx;
+          const y = (parseFloat(target.getAttribute('data-y') || '0')) + event.dy;
+          target.style.transform = `translate(${x}px, ${y}px)`;
+          target.setAttribute('data-x', String(x));
+          target.setAttribute('data-y', String(y));
+        },
+        end(event: any) {
+          const target = event.target as HTMLElement;
+          target.style.pointerEvents = '';
+          target.style.opacity = '';
+          target.style.zIndex = '';
+          target.style.transform = '';
+          target.removeAttribute('data-x');
+          target.removeAttribute('data-y');
+        },
       },
     });
-    return () => draggable.destroy();
-  }, []);
+    return () => interact('.activity-card').unset();
+  }, [activities]);
 
   function openAdd() {
     setEditingActivity(undefined);
@@ -55,7 +68,7 @@ export function ActivityList() {
           管理活动
         </button>
       </div>
-      <p className="hint">拖动或点选卡片，再到时间轴安排 · 双击编辑</p>
+      <p className="hint">拖到时间轴安排，或点选后点时间轴 · 双击编辑</p>
 
       <div className="activity-list" ref={listRef}>
         {activities.length === 0 && (

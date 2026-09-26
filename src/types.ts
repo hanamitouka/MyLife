@@ -49,8 +49,6 @@ export interface ScheduleEvent {
   start: string;
   /** 结束时间，ISO 字符串 */
   end: string;
-  /** 是否已完成（完成后可回写关联待办） */
-  done?: boolean;
 }
 
 /** 待办；带 dueAt（截止时间）就是一条 DDL */
